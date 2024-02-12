@@ -1,9 +1,15 @@
 const express = require("express");
 const path = require("path");
+const cookieParser = require("cookie-parser");
+const { checkForAuthentication, restrictTo } = require("./middlewares/auth");
 const URL = require("./models/url");
-const urlRouter = require("./routes/url");
-const staticRoute = require("./routes/staticRouter");
+
 const { mongoDBConnection } = require("./connection");
+
+// all routes
+const urlRoute = require("./routes/url");
+const userRoute = require("./routes/user");
+const staticRoute = require("./routes/staticRouter");
 
 const app = express();
 const PORT = 8001;
@@ -11,6 +17,8 @@ const PORT = 8001;
 // middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(checkForAuthentication);
 
 // connect
 mongoDBConnection("mongodb://127.0.0.1:27017/short-url").then(() =>
@@ -29,7 +37,8 @@ app.get("/test", async (req, res) => {
   });
 });
 
-app.use("/url", urlRouter);
+app.use("/url", restrictTo(["NORMAL", "ADMIN"]), urlRoute);
+app.use("/user", userRoute);
 app.use("/", staticRoute);
 
 app.get("/url/:shortId", async (req, res) => {
